@@ -6,7 +6,6 @@ import requests
 import base64
 from urllib.parse import urlparse
 import http.server
-import os
 
 global auth_code
 global log_status
