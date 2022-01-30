@@ -6,10 +6,14 @@ import requests
 import base64
 from urllib.parse import urlparse
 import http.server
+import os
 
 global auth_code
 global log_status
-log_status = False
+if len(cred.refresh_token) < 1:
+    log_status = False
+else:
+    log_status = True
 
 # Website Server for receiving auth code details
 class LoginServer(http.server.BaseHTTPRequestHandler):
@@ -104,6 +108,15 @@ class EchoBot(Client):
         auth_response_data = auth_response.json()
         self.access_token = auth_response_data['access_token']
         self.refresh_token = auth_response_data['refresh_token']
+        creds = open("cred.py", 'r')
+        old_creds = creds.readlines()
+        old_creds.pop()
+        old_creds.append("refresh_token='{}'".format(self.refresh_token))
+        new_creds = old_creds
+        creds.close()
+        creds2 = open("cred.py", "w")
+        creds2.writelines(new_creds)
+        creds2.close()
         print("Access Token Received\n")
         log_status = True
 
@@ -114,6 +127,7 @@ class EchoBot(Client):
         encoded_client = encoded_client.encode('ascii')
         encoded_client = base64.b64encode(encoded_client)
         encoded_client = encoded_client.decode('ascii')
+        self.refresh_token = cred.refresh_token
         headers = {
             'Authorization': 'Basic {}'.format(encoded_client),
             'Content-Type': "application/x-www-form-urlencoded"
@@ -137,10 +151,19 @@ class EchoBot(Client):
         print(uri)
 
         dev_url = "https://api.spotify.com/v1/me/player/devices"
-        headers = {
-            'Authorization': 'Bearer {}'.format(self.access_token),
-            'Content-Type': "application/json"
-        }
+        try:
+            headers = {
+                'Authorization': 'Bearer {}'.format(self.access_token),
+                'Content-Type': "application/json"
+            }
+        except AttributeError:
+            self.refresh()
+            headers = {
+                'Authorization': 'Bearer {}'.format(self.access_token),
+                'Content-Type': "application/json"
+            }
+        except:
+            raise
         response = requests.get(dev_url, headers=headers)
         response = response.json()
         if "error" in response:
